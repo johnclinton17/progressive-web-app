@@ -55,12 +55,26 @@ self.addEventListener('fetch', function(event) {
 
     console.log("Url", event.request.url);
 
-    event.respondWith(
-        caches.match(event.request).then(function(response) {
-            return response || fetch(event.request);
-        })
-    );
+    event.respondWith(cacheFirst(event.request));
 });
+
+function cacheFirst(request) {
+  const cacheName = getCacheName(request.url)
+  return caches.open(cacheName)
+    .then(cache => cache.match(request.url))
+    .then(response => {
+      return response || fetchAndCache(request, cacheName)
+    })
+}
+
+function fetchAndCache(request, cacheName) {
+  return fetch(request).then(response => {
+    const copy = response.clone()
+    caches.open(cacheName)
+      .then(cache => cache.put(request, copy))
+    return response
+  })
+}
 
 self.addEventListener('push', function(event) {
   console.log('[Service Worker] Push Received.');
